@@ -120,7 +120,7 @@ const loginUser = async(res,req)=>{
         throw new ApiError(400, "Incorrect Password");
       }
     //access and refresh token 
-    const {accessToken,refressToken} = await generateAccessandrefreshToken(user._id);
+    const {accessToken,refreshToken} = await generateAccessandrefreshToken(user._id);
      // updated the user DB so that it adds the refreshToken
     const loggeduser = await User.findById(user._id).select("-password -refreshToken");
     
@@ -131,21 +131,48 @@ const loginUser = async(res,req)=>{
     }
     res.status(200).
     cookie("accessToken",accessToken,options).
-    cookie("refreshToken",refressToken,options).
+    cookie("refreshToken",refreshToken,options).
     json(new Apiresponse(200,
         {
-            user:loggeduser,accessToken,refressToken
+            user:loggeduser,accessToken,refreshToken
         },
         "user is logged"
         ))
-     
-    
-
     } catch (error) {
-        console.error("Error is :", error)
+        console.error("Error in login user :", error)
     }
 }
 
+const logoutuser = async(req,res)=>{
+  try {
+    //access the db for user details by req.user._id as it comes from the middleware
+     await User.findByIdAndUpdate(req.user._id,{
+        //remove the Tokens
+        $set:{
+            refreshToken: undefined
+        }
+     },{
+        new:true
+     })
+    //Clear the cookies
+     const options = {
+        httpOnly:true,
+        secure:true,
+    }
+    return res.status(200).
+    clearCookies("accessToken",options).
+    clearCookies("refreshToken",options).
+    json(new Apiresponse(200,"User Logged Out"))
+
+     
+    
+    //redirect to "/" 
+  } catch (error) {
+    console.error("Error in logout user:",error)
+  }
+}
+
 export {registerUser,
-        loginUser 
+        loginUser,
+        logoutuser 
 }
